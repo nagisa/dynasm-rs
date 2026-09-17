@@ -231,7 +231,9 @@ pub trait DynasmApi: Extend<u8> + for<'a> Extend<&'a u8> {
         self.extend(&value.to_le_bytes());
     }
     /// This function is called in when a runtime error has to be generated. It panics.
-    #[inline]
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
     fn runtime_error(&self, msg: &'static str) -> ! {
         panic!("{}", msg);
     }

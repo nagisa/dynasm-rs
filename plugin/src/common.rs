@@ -288,6 +288,9 @@ pub enum Stmt {
     DynamicJumpTarget(TokenTree, Relocation),
     ValueJumpTarget(TokenTree, Relocation),
 
+    // a test that if failing results in the runtime_error() being called
+    MaybeRuntimeError(syn::Expr, &'static str),
+
     // a random statement that has to be inserted between assembly hunks
     Stmt(TokenStream)
 }
