@@ -201,40 +201,44 @@ pub type UncommittedModifier<'a> = crate::UncommittedModifier<'a>;
 
 /// Handler for `f32` out-of-range aarch64 immediates.
 #[inline(never)]
-pub fn immediate_out_of_range_unsigned_f32(immediate: f32) -> ! {
-    panic!("Cannot assemble this Aarch64 instruction. Immediate {immediate} is out of range.")
+#[track_caller]
+pub const fn immediate_out_of_range_unsigned_f32() -> ! {
+    panic!("Cannot assemble this Aarch64 instruction. Immediate is out of range.")
 }
 
 /// Handler for `u64` out-of-range aarch64 immediates.
 #[inline(never)]
-pub fn immediate_out_of_range_unsigned_64(immediate: u64) -> ! {
-    panic!("Cannot assemble this Aarch64 instruction. Immediate {immediate} is out of range.")
+#[track_caller]
+pub const fn immediate_out_of_range_unsigned_64() -> ! {
+    panic!("Cannot assemble this Aarch64 instruction. Immediate is out of range.")
 }
 
 /// Handler for `u32` out-of-range aarch64 immediates.
 #[inline(never)]
-pub fn immediate_out_of_range_unsigned_32(immediate: u32) -> ! {
-    panic!("Cannot assemble this Aarch64 instruction. Immediate {immediate} is out of range.")
+#[track_caller]
+pub const fn immediate_out_of_range_unsigned_32() -> ! {
+    panic!("Cannot assemble this Aarch64 instruction. Immediate is out of range.")
 }
 
 /// Handler for `i32` out-of-range aarch64 immediates.
 #[inline(never)]
-pub fn immediate_out_of_range_signed_32(immediate: i32) -> ! {
-    panic!("Cannot assemble this Aarch64 instruction. Immediate {immediate} is out of range.")
+#[track_caller]
+pub const fn immediate_out_of_range_signed_32() -> ! {
+    panic!("Cannot assemble this Aarch64 instruction. Immediate is out of range.")
 }
 
-
 /// Helper function for validating that a given value can be encoded as a 32-bit logical immediate
-pub fn encode_logical_immediate_32bit(value: u32) -> Option<u16> {
+pub const fn encode_logical_immediate_32bit(value: u32) -> Option<u16> {
     let transitions = value ^ value.rotate_right(1);
-    let element_size = (64u32).checked_div(transitions.count_ones())?;
+    let Some(element_size) = (64u32).checked_div(transitions.count_ones()) else { return None };
 
     // confirm that the elements are identical
     if value != value.rotate_left(element_size) {
         return None;
     }
 
-    let element = value & 1u32.checked_shl(element_size).unwrap_or(0).wrapping_sub(1);
+    let shifted = if let Some(shifted) = 1u32.checked_shl(element_size) { shifted } else { 0 };
+    let element = value & shifted.wrapping_sub(1);
     let ones = element.count_ones();
     let imms = (!((element_size << 1) - 1) & 0x3F) | (ones - 1);
 

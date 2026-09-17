@@ -120,6 +120,7 @@ fn riscv_const_dynasm() {
     const {
         let mut out = ConstAssembler::<64>::new();
         let reg = 1;
+        let imm = 32;
         dynasmrt::dynasm!(out
             ; .arch riscv64
 
@@ -127,7 +128,7 @@ fn riscv_const_dynasm() {
             ; start:
             ;   ecall
             ;   add x10, x10, X(1)
-            ;   add X(reg), X(reg), X(reg)
+            ;   addi X(reg), X(reg), imm
             ;   bgtu x10, x11, <start
         );
     };
@@ -138,6 +139,7 @@ fn aarch64_const_dynasm() {
     const {
         let mut out = ConstAssembler::<64>::new();
         let reg = 1;
+        let imm = 32;
         dynasmrt::dynasm!(out
             ; .arch aarch64
 
@@ -145,7 +147,7 @@ fn aarch64_const_dynasm() {
             ; start:
             ;   svc #0
             ;   add x0, x0, X(1)
-            ;   add X(reg), X(reg), X(reg), lsl #2
+            ;   add X(reg), X(reg), X(reg), lsl imm
             ;   b.hi <start
         );
     };

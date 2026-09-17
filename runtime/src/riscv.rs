@@ -398,31 +398,36 @@ pub type UncommittedModifier<'a> = crate::UncommittedModifier<'a>;
 
 /// Handler for `u32` out-of-range riscv64 & riscv32 immediates.
 #[inline(never)]
-pub fn immediate_out_of_range_unsigned_32(immediate: u32) -> ! {
-    panic!("Cannot assemble this RISC-V instruction. Immediate {immediate} is out of range.")
+#[track_caller]
+pub const fn immediate_out_of_range_unsigned_32() -> ! {
+    panic!("Cannot assemble this RISC-V instruction. Immediate is out of range.")
 }
 
 /// Handler for `i32` out-of-range riscv64 & riscv32 immediates.
 #[inline(never)]
-pub fn immediate_out_of_range_signed_32(immediate: i32) -> ! {
-    panic!("Cannot assemble this RISC-V instruction. Immediate {immediate} is out of range.")
+#[track_caller]
+pub const fn immediate_out_of_range_signed_32() -> ! {
+    panic!("Cannot assemble this RISC-V instruction. Immediate is out of range.")
 }
 /// Handler for `u64` out-of-range riscv64 & riscv32 immediates.
 #[inline(never)]
-pub fn immediate_out_of_range_unsigned_64(immediate: u64) -> ! {
-    panic!("Cannot assemble this RISC-V instruction. Immediate {immediate} is out of range.")
+#[track_caller]
+pub const fn immediate_out_of_range_unsigned_64() -> ! {
+    panic!("Cannot assemble this RISC-V instruction. Immediate is out of range.")
 }
 
 /// Handler for `i64` out-of-range riscv64 & riscv32 immediates.
 #[inline(never)]
-pub fn immediate_out_of_range_signed_64(immediate: i64) -> ! {
-    panic!("Cannot assemble this RISC-V instruction. Immediate {immediate} is out of range.")
+#[track_caller]
+pub const fn immediate_out_of_range_signed_64() -> ! {
+    panic!("Cannot assemble this RISC-V instruction. Immediate is out of range.")
 }
 
 /// Handler for invalid riscv64 & riscv32 registers.
 #[inline(never)]
-pub fn invalid_register(register: u8) -> ! {
-    panic!("Cannot assemble this RISC-V instruction. Register x{register} cannot be encoded.")
+#[track_caller]
+pub fn invalid_register() -> ! {
+    panic!("Cannot assemble this RISC-V instruction. Register cannot be encoded.")
 }
 
 

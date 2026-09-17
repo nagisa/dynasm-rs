@@ -236,7 +236,7 @@ pub(super) fn compile_instruction(ctx: &mut Context, data: MatchData) -> Result<
                             {
                                 let _dyn_imm = #value;
                                 [#(#options),*].iter().rposition(|&n| n as u32 == _dyn_imm)
-                                    .unwrap_or_else(|| ::dynasmrt::aarch64::immediate_out_of_range_unsigned_32(_dyn_imm)) as u32
+                                    .unwrap_or_else(|| ::dynasmrt::aarch64::immediate_out_of_range_unsigned_32()) as u32
                             }
                         }));
                     }
@@ -327,7 +327,7 @@ pub(super) fn compile_instruction(ctx: &mut Context, data: MatchData) -> Result<
                         statics.push((offset, number & mask));
                     } else {
                         let check = quote_spanned!{ value.span()=>
-                            if (#value - 1u32) > (#mask - #prev_value) { ::dynasmrt::aarch64::immediate_out_of_range_unsigned_32(#value); }
+                            if (#value - 1u32) > (#mask - #prev_value) { ::dynasmrt::aarch64::immediate_out_of_range_unsigned_32(); }
                         };
 
                         dynamics.push((offset, quote_spanned!{ value.span()=>
@@ -442,7 +442,7 @@ pub(super) fn compile_instruction(ctx: &mut Context, data: MatchData) -> Result<
                     if check.is_none() {
 
                         let check = quote_spanned!{ value.span()=>
-                            if (#value - 1u32) > (#mask - #prev_value) { ::dynasmrt::aarch64::immediate_out_of_range_unsigned_32(#value); }
+                            if (#value - 1u32) > (#mask - #prev_value) { ::dynasmrt::aarch64::immediate_out_of_range_unsigned_32(); }
                         };
 
                         dynamics.push((0, quote_spanned! { value.span()=>
@@ -696,7 +696,7 @@ fn handle_special_immediates(offset: u8, special: SpecialComm, imm: &syn::Expr, 
                     let offset = value.trailing_zeros() & 0b110000;
 
                     if (value & !(0xFFFFu64 << offset)) != 0 {
-                        ::dynasmrt::aarch64::immediate_out_of_range_unsigned_64(!value);
+                        ::dynasmrt::aarch64::immediate_out_of_range_unsigned_64();
                     }
 
                     ((0xFFFFu64 & (value >> offset)) as u32) | (offset << 12)
@@ -718,7 +718,7 @@ fn handle_special_immediates(offset: u8, special: SpecialComm, imm: &syn::Expr, 
                     let offset = value.trailing_zeros() & 0b10000;
 
                     if (value & !(0xFFFFu32 << offset)) != 0 {
-                        ::dynasmrt::aarch64::immediate_out_of_range_unsigned_32(!value);
+                        ::dynasmrt::aarch64::immediate_out_of_range_unsigned_32();
                     }
 
                     (0xFFFFu32 & (value >> offset)) | (offset << 12)
@@ -738,7 +738,7 @@ fn handle_special_immediates(offset: u8, special: SpecialComm, imm: &syn::Expr, 
                     let offset = value.trailing_zeros() & 0b110000;
 
                     if (value & !(0xFFFFu64 << offset)) != 0 {
-                        ::dynasmrt::aarch64::immediate_out_of_range_unsigned_64(value);
+                        ::dynasmrt::aarch64::immediate_out_of_range_unsigned_64();
                     }
 
                     ((0xFFFFu64 & (value >> offset)) as u32) | (offset << 12)
@@ -760,7 +760,7 @@ fn handle_special_immediates(offset: u8, special: SpecialComm, imm: &syn::Expr, 
                     let offset = value.trailing_zeros() & 0b10000;
 
                     if (value & !(0xFFFFu32 << offset)) != 0 {
-                        ::dynasmrt::aarch64::immediate_out_of_range_unsigned_32(value);
+                        ::dynasmrt::aarch64::immediate_out_of_range_unsigned_32();
                     }
 
                     (0xFFFFu32 & (value >> offset)) | (offset << 12)
@@ -783,7 +783,7 @@ fn handle_special_immediates(offset: u8, special: SpecialComm, imm: &syn::Expr, 
                     test |= test << 2;
                     test |= test << 4;
                     if test != value {
-                        ::dynasmrt::aarch64::immediate_out_of_range_unsigned_64(value);
+                        ::dynasmrt::aarch64::immediate_out_of_range_unsigned_64();
                     }
                     let mut masked = value & 0x8040201008040201;
                     masked |= masked >> 32;
@@ -804,8 +804,8 @@ fn handle_special_immediates(offset: u8, special: SpecialComm, imm: &syn::Expr, 
             }
         } else {
             dynamics.push((offset, quote_spanned!{ imm.span()=>
-                dynasmrt::aarch64::encode_logical_immediate_32bit(#imm).unwrap_or_else(
-                    || ::dynasmrt::aarch64::immediate_out_of_range_unsigned_32(#imm)) as u32
+                ::dynasmrt::aarch64::encode_logical_immediate_32bit(#imm).unwrap_or_else(
+                    || ::dynasmrt::aarch64::immediate_out_of_range_unsigned_32()) as u32
             }));
             return Ok(());
         },
@@ -816,8 +816,8 @@ fn handle_special_immediates(offset: u8, special: SpecialComm, imm: &syn::Expr, 
             }
         } else {
             dynamics.push((offset, quote_spanned!{ imm.span()=>
-                dynasmrt::aarch64::encode_logical_immediate_64bit(#imm).unwrap_or_else(
-                    || ::dynasmrt::aarch64::immediate_out_of_range_unsigned_64(#imm)) as u32
+                ::dynasmrt::aarch64::encode_logical_immediate_64bit(#imm).unwrap_or_else(
+                    || ::dynasmrt::aarch64::immediate_out_of_range_unsigned_64()) as u32
             }));
             return Ok(());
         },
@@ -834,7 +834,7 @@ fn handle_special_immediates(offset: u8, special: SpecialComm, imm: &syn::Expr, 
 
                     let check = (bits >> 25) & 0x3F;
                     if (check != 0b10_0000 && check != 0b01_1111) || (bits & 0x7_FFFF) != 0 {
-                        ::dynasmrt::aarch64::immediate_out_of_range_unsigned_f32(value);
+                        ::dynasmrt::aarch64::immediate_out_of_range_unsigned_f32();
                     }
 
                     ((bits >> 24) & 0x80) | ((bits >> 19) & 0x7F)
@@ -856,7 +856,7 @@ fn handle_special_immediates(offset: u8, special: SpecialComm, imm: &syn::Expr, 
 
                     let check = (bits >> 25) & 0x3F;
                     if (check != 0b10_0000 && check != 0b01_1111) || (bits & 0x7_FFFF) != 0 {
-                        ::dynasmrt::aarch64::immediate_out_of_range_unsigned_f32(value);
+                        ::dynasmrt::aarch64::immediate_out_of_range_unsigned_f32();
                     }
 
                     ((bits >> 18) & 0x20_00) | ((bits >> 13) & 0x18_00) | ((bits >> 19) & 0x1F)
@@ -931,7 +931,7 @@ fn dynamic_range_check_unsigned(span: Span, bias: u32, range: u32, scale: u8) ->
         }
     };
 
-    quote_spanned!{ span => if #check { ::dynasmrt::aarch64::immediate_out_of_range_unsigned_32(_dyn_imm); }}
+    quote_spanned!{ span => if #check { ::dynasmrt::aarch64::immediate_out_of_range_unsigned_32(); }}
 }
 
 /// emits the code for a range check on a signed immediate.
@@ -954,5 +954,5 @@ fn dynamic_range_check_signed(span: Span, bias: i32, range: u32, scale: u8) -> T
         }
     };
 
-    quote_spanned!{ span => if #check { ::dynasmrt::aarch64::immediate_out_of_range_signed_32(_dyn_imm); }}
+    quote_spanned!{ span => if #check { ::dynasmrt::aarch64::immediate_out_of_range_signed_32(); }}
 }
