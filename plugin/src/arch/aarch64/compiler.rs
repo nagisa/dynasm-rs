@@ -18,7 +18,7 @@ pub(super) fn compile_instruction(ctx: &mut Context, data: MatchData) -> Result<
     // All static bitfields (compile-time constant) will be encoded into this map of (offset, bitfield)
     let mut statics = Vec::new();
     // All dynamic bitfields (run-time determined) will be encoded into this map of
-    // (dynamic_expr_eval_stmt, runtime_check, runtime_check_failure_msg, offset, TokenStream)
+    // (assignments, (runtime_check, runtime_check_failure_msg), offset, TokenStream)
     let mut dynamics = Vec::new();
     // Any relocations will be encoded into this list
     let mut relocations = Vec::new();
@@ -239,7 +239,7 @@ pub(super) fn compile_instruction(ctx: &mut Context, data: MatchData) -> Result<
                         let imm_var = new_var();
                         let idx_var = new_var();
                         let test = (
-                            syn::parse2(quote_spanned!{ value.span()=> #idx_var.is_none() }).unwrap(),
+                            quote_spanned!{ value.span()=> #idx_var.is_none() },
                             "immediate is out of range"
                         );
                         dynamics.push((
@@ -372,9 +372,7 @@ pub(super) fn compile_instruction(ctx: &mut Context, data: MatchData) -> Result<
                     } else {
                         let var = new_var();
                         let test = (
-                            syn::parse2(quote_spanned!{ value.span()=>
-                                (#var - 1u32) > (#mask - #prev_value)
-                            }).unwrap(),
+                            quote_spanned!{ value.span()=> (#var - 1u32) > (#mask - #prev_value) },
                             "immediate out of range",
                         );
                         dynamics.push((
@@ -522,9 +520,7 @@ pub(super) fn compile_instruction(ctx: &mut Context, data: MatchData) -> Result<
                     if check.is_none() {
                         let var = new_var();
                         let test = (
-                            syn::parse2(quote_spanned!{ value.span()=>
-                                (#var - 1u32) > (#mask - #prev_value)
-                            }).unwrap(),
+                            quote_spanned!{ value.span()=> (#var - 1u32) > (#mask - #prev_value) },
                             "immediate out of range",
                         );
 
@@ -808,7 +804,7 @@ pub(super) fn compile_instruction(ctx: &mut Context, data: MatchData) -> Result<
         for (assignment, test, offset, expr) in dynamics {
             ctx.state.stmts.push(Stmt::Stmt(assignment));
             if let Some((cond, msg)) = test {
-                ctx.state.stmts.push(Stmt::MaybeRuntimeError(cond, msg));
+                ctx.state.stmts.push(Stmt::MaybeRuntimeError(syn::parse2(cond).unwrap(), msg));
             }
             res = quote!{
                 #res | ((#expr as u32) << #offset)
@@ -825,7 +821,14 @@ pub(super) fn compile_instruction(ctx: &mut Context, data: MatchData) -> Result<
     Ok(())
 }
 
-fn handle_special_immediates(offset: u8, special: SpecialComm, imm: &syn::Expr, statics: &mut Vec<(u8, u32)>, dynamics: &mut Vec<(TokenStream, Option<(syn::Expr, &'static str)>, u8, TokenStream)>, mut new_var: impl FnMut() -> proc_macro2::Ident) -> Result<(), Option<String>> {
+fn handle_special_immediates(
+    offset: u8,
+    special: SpecialComm,
+    imm: &syn::Expr,
+    statics: &mut Vec<(u8, u32)>,
+    dynamics: &mut Vec<(TokenStream, Option<(TokenStream, &'static str)>, u8, TokenStream)>,
+    mut new_var: impl FnMut() -> proc_macro2::Ident
+) -> Result<(), Option<String>> {
     match special {
         SpecialComm::INVERTED_WIDE_IMMEDIATE_X => if let Some(number) = None::<u64> { // as_unsigned_number(imm) {
             if let Some(encoded) = encoding_helpers::encode_wide_immediate_64bit(!number) {
@@ -836,9 +839,7 @@ fn handle_special_immediates(offset: u8, special: SpecialComm, imm: &syn::Expr, 
             let imm_var = new_var();
             let off_var = new_var();
             let test = (
-                syn::parse2(quote_spanned!{ imm.span()=> {
-                    (#imm_var & !(0xFFFFu64 << #off_var)) != 0
-                }}).unwrap(),
+                quote_spanned!{ imm.span()=> (#imm_var & !(0xFFFFu64 << #off_var)) != 0 },
                 "immediate out of range",
             );
             dynamics.push((
@@ -860,7 +861,7 @@ fn handle_special_immediates(offset: u8, special: SpecialComm, imm: &syn::Expr, 
             let imm_var = new_var();
             let off_var = new_var();
             let test = (
-                syn::parse2(quote_spanned!{ imm.span()=> (#imm_var & !(0xFFFFu32 << #off_var)) != 0 }).unwrap(),
+                quote_spanned!{ imm.span()=> (#imm_var & !(0xFFFFu32 << #off_var)) != 0 },
                 "immediate out of range",
             );
             dynamics.push((
@@ -880,7 +881,7 @@ fn handle_special_immediates(offset: u8, special: SpecialComm, imm: &syn::Expr, 
             let imm_var = new_var();
             let off_var = new_var();
             let test = (
-                syn::parse2(quote_spanned!{ imm.span()=> (#imm_var & !(0xFFFFu64 << #off_var)) != 0  }).unwrap(),
+                quote_spanned!{ imm.span()=> (#imm_var & !(0xFFFFu64 << #off_var)) != 0 },
                 "immediate out of range",
             );
             dynamics.push((
@@ -901,7 +902,7 @@ fn handle_special_immediates(offset: u8, special: SpecialComm, imm: &syn::Expr, 
         } else {
             let (imm_var, off_var) = (new_var(), new_var());
             let test = (
-                syn::parse2(quote_spanned!{ imm.span()=> (#imm_var & !(0xFFFFu32 << #off_var)) != 0   }).unwrap(),
+                quote_spanned!{ imm.span()=> (#imm_var & !(0xFFFFu32 << #off_var)) != 0 },
                 "immediate out of range",
             );
             dynamics.push((
@@ -921,13 +922,13 @@ fn handle_special_immediates(offset: u8, special: SpecialComm, imm: &syn::Expr, 
         } else {
             let imm_var = new_var();
             let test = (
-                syn::parse2(quote_spanned!{ imm.span()=> {
+                quote_spanned!{ imm.span()=> {
                     let mut test = #imm_var & 0x0101_0101_0101_0101;
                     test |= test << 1;
                     test |= test << 2;
                     test |= test << 4;
                     test != #imm_var
-                }}).unwrap(),
+                }},
                 "immediate out of range",
             );
             dynamics.push((
@@ -959,7 +960,7 @@ fn handle_special_immediates(offset: u8, special: SpecialComm, imm: &syn::Expr, 
             dynamics.push((
                 quote_spanned! { imm.span() => let #imm_var: u32 = #imm; let #encoded_var = #encode_imm; },
                 Some((
-                    syn::parse2(quote_spanned! { imm.span()=> #encoded_var.is_none() }).unwrap(),
+                    quote_spanned! { imm.span()=> #encoded_var.is_none() },
                     "immediate out of range"
                 )),
                 offset,
@@ -979,7 +980,7 @@ fn handle_special_immediates(offset: u8, special: SpecialComm, imm: &syn::Expr, 
             dynamics.push((
                 quote_spanned! { imm.span() => let #imm_var: u64 = #imm; let #encoded_var = #encode_imm; },
                 Some((
-                    syn::parse2(quote_spanned! { imm.span()=> #encoded_var.is_none() }).unwrap(),
+                    quote_spanned! { imm.span()=> #encoded_var.is_none() },
                     "immediate out of range"
                 )),
                 offset,
@@ -996,10 +997,10 @@ fn handle_special_immediates(offset: u8, special: SpecialComm, imm: &syn::Expr, 
             let imm_var = new_var();
             let bits_var = new_var();
             let test = (
-                syn::parse2(quote_spanned! { imm.span()=> {
+                quote_spanned! { imm.span()=> {
                     let check = (#bits_var >> 25) & 0x3F;
                     (check != 0b10_0000 && check != 0b01_1111) || (#bits_var & 0x7_FFFF) != 0
-                }}).unwrap(),
+                }},
                 "immediate out of range",
             );
             dynamics.push((
@@ -1020,10 +1021,10 @@ fn handle_special_immediates(offset: u8, special: SpecialComm, imm: &syn::Expr, 
             let imm_var = new_var();
             let bits_var = new_var();
             let test = (
-                syn::parse2(quote_spanned! { imm.span() => {
+                quote_spanned! { imm.span() => {
                     let check = (#bits_var >> 25) & 0x3F;
                     (check != 0b10_0000 && check != 0b01_1111) || (#bits_var & 0x7_FFFF) != 0
-                }}).unwrap(),
+                }},
                 "immediate out of range"
             );
             dynamics.push((
@@ -1085,8 +1086,8 @@ fn static_range_check(expr: &syn::Expr, bias: i32, range: u32, scale: u8) -> Res
 }
 
 /// emits the code for a range check on an unsigned immediate.
-fn dynamic_range_check_unsigned(span: Span, imm: &proc_macro2::Ident, bias: u32, range: u32, scale: u8) -> syn::Expr {
-    let check = if scale == 0 {
+fn dynamic_range_check_unsigned(span: Span, imm: &proc_macro2::Ident, bias: u32, range: u32, scale: u8) -> TokenStream {
+    if scale == 0 {
         if bias == 0 {
             quote_spanned!{ span=> #imm > #range }
         } else {
@@ -1100,16 +1101,14 @@ fn dynamic_range_check_unsigned(span: Span, imm: &proc_macro2::Ident, bias: u32,
         } else {
             quote_spanned!{ span=> ((#imm & #mask) != 0) || (#imm >> #scale).wrapping_sub(#bias) > #range }
         }
-    };
-
-    syn::parse2(check).unwrap()
+    }
 }
 
 /// emits the code for a range check on a signed immediate.
-fn dynamic_range_check_signed(span: Span, imm: &proc_macro2::Ident, bias: i32, range: u32, scale: u8) -> syn::Expr {
+fn dynamic_range_check_signed(span: Span, imm: &proc_macro2::Ident, bias: i32, range: u32, scale: u8) -> TokenStream {
     let bias = -bias;
 
-    let check = if scale == 0 {
+    if scale == 0 {
         if bias == 0 {
             quote_spanned!{ span => (#imm as u32) > #range }
         } else {
@@ -1123,7 +1122,5 @@ fn dynamic_range_check_signed(span: Span, imm: &proc_macro2::Ident, bias: i32, r
         } else {
             quote_spanned!{ span=> ((#imm & #mask) != 0) || ((#imm >> #scale).wrapping_add(#bias) as u32) > #range }
         }
-    };
-
-    syn::parse2(check).unwrap()
+    }
 }
