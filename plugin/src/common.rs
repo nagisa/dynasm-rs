@@ -399,8 +399,9 @@ pub fn bitmask64(scale: u8) -> u64 {
 /// This is only done when the crate is built with the operand_conversions feature enabled.
 #[cfg(feature = "runtime_computations")]
 pub fn maybe_into(expr: impl quote::ToTokens) -> proc_macro2::TokenStream {
+    let delimited = delimited(expr);
     quote::quote_spanned! { expr.span()=>
-        Into::into(#expr)
+        #delimited.into()
     }
 }
 
